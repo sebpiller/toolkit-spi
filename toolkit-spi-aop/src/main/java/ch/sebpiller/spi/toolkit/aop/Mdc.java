@@ -4,7 +4,7 @@ import java.lang.annotation.*;
 
 @Inherited
 @Retention(RetentionPolicy.RUNTIME)
-public @interface AutoMdc {
+public @interface Mdc {
 
 
     /**
@@ -13,7 +13,7 @@ public @interface AutoMdc {
     @Inherited
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.PARAMETER)
-    @interface Mdc {
+    @interface Add {
         String value() default "";
     }
 
