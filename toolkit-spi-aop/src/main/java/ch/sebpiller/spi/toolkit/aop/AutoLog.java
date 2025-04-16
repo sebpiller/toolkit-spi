@@ -53,25 +53,28 @@ public @interface AutoLog {
     class Configuration {
 
         @Builder.Default
+        private boolean enabled = false;
+
+        @Builder.Default
         private boolean entering = true;
 
         @Builder.Default
-        private boolean  exiting  = true;
+        private boolean exiting = true;
 
         @Builder.Default
-        private boolean  exception = true;
+        private boolean exception = true;
 
         @Builder.Default
-        private  boolean  measureExecTime = true;
+        private boolean measureExecTime = true;
 
         @Builder.Default
-        private boolean  printArgs = false;
+        private boolean printArgs = false;
 
         @Builder.Default
-        private boolean  printResult = false;
+        private boolean printResult = false;
 
         @Builder.Default
-        private boolean  warnSlowCalls = true;
+        private boolean warnSlowCalls = true;
 
     }
 }
