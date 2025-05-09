@@ -14,11 +14,37 @@ import java.util.Set;
 
 import static org.springframework.util.ReflectionUtils.invokeMethod;
 
+
 /**
- * Modify the headers to include X-Deprecated if the method it is applied on is actually deprecated and returns a
- * Spring's {@link org.springframework.http.ResponseEntity}. Uses reflection to avoid having a compile time
- * dependency to Spring Web from here. Silently ignored if applied to a wrong method signature, or if the call is
- * actually not deprecated.
+ * Aspect that automatically adds a custom deprecation header to HTTP responses if the invoked public method
+ * is marked as deprecated and returns a ResponseEntity. This behavior is only applied to classes or methods
+ * annotated with the {@link AutoDeprecate} annotation.
+ *
+ * The deprecation header name and message can be customized through the {@link AutoDeprecate} annotation's
+ * properties: {@code header} and {@code message}.
+ *
+ * Key functionalities:
+ * 1. Identifies beans or methods annotated with {@link AutoDeprecate}.
+ * 2. Intercepts public methods within these classes or methods.
+ * 3. If the return type is {@code ResponseEntity} and the method is marked as deprecated (via {@code @Deprecated}),
+ *    adds a custom header to the response entity with the configured header name and message.
+ * 4. Does not modify the response if the method or class is not annotated with {@link AutoDeprecate}, or if
+ *    the return type is not {@code ResponseEntity}.
+ *
+ * Behavior Details:
+ * - Uses the Spring AOP {@link Around} advice to wrap around the execution of public methods.
+ * - Checks for the presence of {@code @Deprecated} on the method or its declaring class.
+ * - Preserves the original headers in the ResponseEntity and adds the custom deprecation header.
+ * - Logs a warning if the aspect cannot apply the deprecation header due to runtime issues.
+ *
+ * This aspect is implemented generically without compile-time dependencies on Spring Web classes such
+ * as {@code ResponseEntity}, {@code HttpHeaders}, or {@code HttpStatusCode}. These classes are dynamically
+ * loaded and used via reflection to maintain compatibility.
+ *
+ * Note:
+ * - Annotation presence is validated across overridden methods in interfaces and superclasses.
+ * - If the invoked method is not explicitly annotated with {@link AutoDeprecate}, the aspect
+ *   falls back to scanning its declaring class for the annotation.
  */
 @Slf4j
 @Aspect
@@ -33,6 +59,7 @@ public class AutoDeprecateAspect extends AbstractBaseAspectDefinition {
     public void publicMethodInsideAClassMarkedWithAutoDeprecate() {
     }
 
+    @SuppressWarnings("unchecked")
     @Around("publicMethodInsideAClassMarkedWithAutoDeprecate()")
     public Object addDeprecatedHeaderToSpringResponseIfRequired(ProceedingJoinPoint pjp) throws Throwable {
         var method = ((MethodSignature) pjp.getSignature()).getMethod();
@@ -42,8 +69,8 @@ public class AutoDeprecateAspect extends AbstractBaseAspectDefinition {
 
         try {
             if (result != null &&
-                result.getClass().getName().equals(SPRING_WEB_RESPONSE_ENTITY_CLASS) && // no compile time dep to spring-web
-                findAnnotation(clazz, method, Deprecated.class).isPresent()) {
+                    result.getClass().getName().equals(SPRING_WEB_RESPONSE_ENTITY_CLASS) && // no compile time dep to spring-web
+                    findAnnotation(clazz, method, Deprecated.class).isPresent()) {
 
                 var deprecatedAnnot = getAnnotation(clazz, method, AutoDeprecate.class);
 
@@ -54,7 +81,7 @@ public class AutoDeprecateAspect extends AbstractBaseAspectDefinition {
 
                 var newHeaders = (Map<String, List<String>>) springHttpHeaderClass.getDeclaredConstructor().newInstance();
 
-                // Copy the originalheaders to the new one.
+                // Copy the original headers to the new one.
                 var originalHeaders = invokeMethod(result.getClass().getMethod("getHeaders"), result);
                 if (originalHeaders != null) {
                     var entrySet = springHttpHeaderClass.getMethod("entrySet");

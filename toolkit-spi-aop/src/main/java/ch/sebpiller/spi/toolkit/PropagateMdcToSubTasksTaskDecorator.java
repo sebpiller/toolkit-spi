@@ -1,13 +1,20 @@
 package ch.sebpiller.spi.toolkit;
 
-import org.jetbrains.annotations.NotNull;
+import lombok.NonNull;
 import org.slf4j.MDC;
 import org.springframework.core.task.TaskDecorator;
 
-public class CopyMdcTaskDecorator implements TaskDecorator {
-    @NotNull
-    @Override
-    public Runnable decorate(@NotNull Runnable runnable) {
+public class PropagateMdcToSubTasksTaskDecorator implements TaskDecorator {
+    /**
+     * Decorates a given {@link Runnable} to propagate the MDC (Mapped Diagnostic Context)
+     * to any sub-tasks executed by the decorated runnable. Ensures that the MDC context
+     * of the original thread is preserved during execution of the runnable.
+     *
+     * @param runnable the original {@link Runnable} to be decorated. Must not be null.
+     * @return a new {@link Runnable} that propagates the MDC context during execution.
+     */
+    @Override @NonNull
+    public Runnable decorate(@NonNull Runnable runnable) {
         var contextMap = MDC.getCopyOfContextMap();
 
         return () -> {

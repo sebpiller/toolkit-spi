@@ -21,12 +21,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 
-/**
- * Aspect implementing the log of calls made to methods of a class.
- * Mainly useful for debugging and development purposes. Still, can be used on production context.
- * Very similar in concept to <a href="https://www.slf4j.org/api/org/slf4j/ext/XLogger.html">XLogger</a>,
- * but using AOP instead of imperative paradigm.
- */
+
 @Aspect
 @RequiredArgsConstructor
 @Component
@@ -43,7 +38,7 @@ public class AutoLogAspect extends AbstractBaseAspectDefinition {
     private static final String LOG_EXCEPTION = "!! exception thrown by {}#{}({}): {} \"{}\" (root: {})";
     private static final String LOG_SLOW_CALL = "!! SLOW CALL DETECTED: {}#{} took {}ms to process";
 
-    private final AutoLog.Configuration global;
+    private final AutoLog.Configuration config;
 
     @Pointcut("within(@AutoLog *)")
     public void beanAnnotatedWithAutoLog() {
@@ -56,23 +51,16 @@ public class AutoLogAspect extends AbstractBaseAspectDefinition {
     @Around("publicMethodInsideAClassMarkedWithAutoLog()")
     public Object autoLog(ProceedingJoinPoint pjp) throws Throwable {
         // Fast circuit breaker for production needs:
-        if(!global.isEnabled()) {
+        if (!config.isEnabled()) {
             return pjp.proceed();
         }
-
 
         var start = System.currentTimeMillis();
         var method = ((MethodSignature) pjp.getSignature()).getMethod();
         var clazz = method.getDeclaringClass();
         var logger = LoggerFactory.getLogger(clazz);
 
-        var optautoLog = findAnnotation(clazz, method, AutoLog.class);
-
-        if (optautoLog.isEmpty()) {
-            return pjp.proceed();
-        }
-
-        var autoLog = optautoLog.get();
+        var autoLog = getAnnotation(clazz, method, AutoLog.class);
 
         Throwable error = null;
         Object result = null;
@@ -92,20 +80,25 @@ public class AutoLogAspect extends AbstractBaseAspectDefinition {
     }
 
     private void doBeforeCall(ProceedingJoinPoint pjp, AutoLog autoLog, Logger logger, Class<?> clazz, Method method) {
-        if (enabled(autoLog.entering(), global.isEntering()) && logger.isDebugEnabled()) {
+        if (enabled(autoLog.entering(), config.isEntering()) && logger.isDebugEnabled()) {
             var deprecated = findAnnotation(clazz, method, Deprecated.class).isPresent();
             logger.debug(deprecated ? LOG_ENTERING_DEPRECATED : LOG_ENTERING, clazz.getSimpleName(), method.getName(), argsToString(pjp, autoLog));
         }
     }
 
     private Object argsToString(ProceedingJoinPoint pjp, AutoLog autoLog) {
-        if (!enabled(autoLog.printArgs(), global.isPrintArgs())) {
+        var parameters = ((MethodSignature) pjp.getSignature()).getMethod().getParameters();
+        if (parameters.length == 0) {
+            return "";
+        }
+
+        if (!enabled(autoLog.printArgs(), config.isPrintArgs())) {
             return ARGS_HIDDEN;
         }
 
         var sb = new ArrayList<String>();
         var i = 0;
-        for (var p : ((MethodSignature) pjp.getSignature()).getMethod().getParameters()) {
+        for (var p : parameters) {
             sb.add(p.getName() + "=" + (p.getAnnotation(AutoLog.Ignored.class) == null ? StringUtils.left(String.valueOf(pjp.getArgs()[i]), 100) : ARG_HIDDEN));
             i++;
         }
@@ -114,7 +107,7 @@ public class AutoLogAspect extends AbstractBaseAspectDefinition {
     }
 
     private void doCatchThrowable(ProceedingJoinPoint pjp, AutoLog autoLog, Logger logger, Class<?> clazz, Method method, Throwable error) {
-        if (enabled(autoLog.exception(), global.isException())) {
+        if (enabled(autoLog.exception(), config.isException())) {
             if (logger.isDebugEnabled()) {
                 logger.debug(LOG_EXCEPTION, clazz.getSimpleName(), method.getName(), argsToString(pjp, autoLog), error.getClass().getName(), error.getMessage(), ExceptionUtils.getRootCause(error).getClass().getName());
             }
@@ -126,7 +119,7 @@ public class AutoLogAspect extends AbstractBaseAspectDefinition {
     private void doFinally(ProceedingJoinPoint pjp, AutoLog autoLog, Logger logger, Class<?> clazz, Method method, Throwable error, Object result, long start) {
         var timeTook = System.currentTimeMillis() - start;
 
-        if (enabled(autoLog.exiting(), global.isExiting()) && logger.isDebugEnabled()) {
+        if (enabled(autoLog.exiting(), config.isExiting()) && logger.isDebugEnabled()) {
             debugExiting(pjp, autoLog, logger, clazz, method, error, result, timeTook);
         }
 
@@ -143,7 +136,7 @@ public class AutoLogAspect extends AbstractBaseAspectDefinition {
         } else if (result == null) {
             s = "(null result)";
         } else if (SPRING_WEB_RESPONSE_ENTITY_CLASS.equals(method.getReturnType().getName())) {
-            if (enabled(autoLog.printResult(), global.isPrintResult())) {
+            if (enabled(autoLog.printResult(), config.isPrintResult())) {
                 var status = ReflectionUtils.invokeMethod(method.getReturnType().getMethod("getStatusCode"), result);
                 var body = ReflectionUtils.invokeMethod(method.getReturnType().getMethod("getBody"), result);
 
@@ -153,16 +146,16 @@ public class AutoLogAspect extends AbstractBaseAspectDefinition {
                     case null, default -> String.valueOf(body);
                 };
 
-                s = "(returning HTTP RESPONSE - Status: " + status + " - Body: " + StringUtils.left(x, 1000) + ")";
+                s = "(returning HTTP RESPONSE - Status: " + status + " - Body: " + StringUtils.left(x, 1_000) + ")";
             } else {
                 s = "(returning HTTP RESPONSE - hidden)";
             }
 
         } else {
-            s = "(returning " + (enabled(autoLog.printResult(), global.isPrintResult()) ? StringUtils.left(String.valueOf(result), 1000) : "non null object") + ")";
+            s = "(returning " + (enabled(autoLog.printResult(), config.isPrintResult()) ? StringUtils.left(String.valueOf(result), 1_000) : "non null object") + ")";
         }
 
-        if (enabled(autoLog.measureExecTime(), global.isMeasureExecTime())) {
+        if (enabled(autoLog.measureExecTime(), config.isMeasureExecTime())) {
             s += " - exec time: " + timeTook + " ms";
         }
 
@@ -170,7 +163,7 @@ public class AutoLogAspect extends AbstractBaseAspectDefinition {
     }
 
     private void warnSlowCallIfNeeded(AutoLog autoLog, Logger logger, Class<?> clazz, Method method, long timeTook) {
-        if (enabled(autoLog.warnSlowCalls(), global.isWarnSlowCalls()) && logger.isWarnEnabled() && (timeTook >= (autoLog.slowCallSeconds() * 1_000L))) {
+        if (enabled(autoLog.warnSlowCalls(), config.isWarnSlowCalls()) && logger.isWarnEnabled() && (timeTook >= (autoLog.slowCallSeconds() * 1_000L))) {
             logger.warn(LOG_SLOW_CALL, clazz.getSimpleName(), method.getName(), timeTook);
         }
     }
