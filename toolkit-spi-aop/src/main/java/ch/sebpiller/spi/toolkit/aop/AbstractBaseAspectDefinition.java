@@ -84,8 +84,8 @@ abstract class AbstractBaseAspectDefinition {
      * - Only annotations of type {@link Annotation} and its subtypes can be processed.
      * - The search will check direct annotations, superinterface methods, and the class hierarchy.
      *
-     * @param <T>   The type of annotation being searched for.
-     * @param clazz The class where the method is declared or inherited. Must not be {@code null}.
+     * @param <T>    The type of annotation being searched for.
+     * @param clazz  The class where the method is declared or inherited. Must not be {@code null}.
      * @param method The method to inspect for annotations. Must not be {@code null}.
      * @param annot  The class of the annotation to search for. Must not be {@code null}.
      * @return An {@link Optional} containing the annotation if found, or {@link Optional#empty()} if not found.

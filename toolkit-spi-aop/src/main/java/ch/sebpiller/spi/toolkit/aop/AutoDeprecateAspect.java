@@ -19,32 +19,32 @@ import static org.springframework.util.ReflectionUtils.invokeMethod;
  * Aspect that automatically adds a custom deprecation header to HTTP responses if the invoked public method
  * is marked as deprecated and returns a ResponseEntity. This behavior is only applied to classes or methods
  * annotated with the {@link AutoDeprecate} annotation.
- *
+ * <p>
  * The deprecation header name and message can be customized through the {@link AutoDeprecate} annotation's
  * properties: {@code header} and {@code message}.
- *
+ * <p>
  * Key functionalities:
  * 1. Identifies beans or methods annotated with {@link AutoDeprecate}.
  * 2. Intercepts public methods within these classes or methods.
  * 3. If the return type is {@code ResponseEntity} and the method is marked as deprecated (via {@code @Deprecated}),
- *    adds a custom header to the response entity with the configured header name and message.
+ * adds a custom header to the response entity with the configured header name and message.
  * 4. Does not modify the response if the method or class is not annotated with {@link AutoDeprecate}, or if
- *    the return type is not {@code ResponseEntity}.
- *
+ * the return type is not {@code ResponseEntity}.
+ * <p>
  * Behavior Details:
  * - Uses the Spring AOP {@link Around} advice to wrap around the execution of public methods.
  * - Checks for the presence of {@code @Deprecated} on the method or its declaring class.
  * - Preserves the original headers in the ResponseEntity and adds the custom deprecation header.
  * - Logs a warning if the aspect cannot apply the deprecation header due to runtime issues.
- *
+ * <p>
  * This aspect is implemented generically without compile-time dependencies on Spring Web classes such
  * as {@code ResponseEntity}, {@code HttpHeaders}, or {@code HttpStatusCode}. These classes are dynamically
  * loaded and used via reflection to maintain compatibility.
- *
+ * <p>
  * Note:
  * - Annotation presence is validated across overridden methods in interfaces and superclasses.
  * - If the invoked method is not explicitly annotated with {@link AutoDeprecate}, the aspect
- *   falls back to scanning its declaring class for the annotation.
+ * falls back to scanning its declaring class for the annotation.
  */
 @Slf4j
 @Aspect

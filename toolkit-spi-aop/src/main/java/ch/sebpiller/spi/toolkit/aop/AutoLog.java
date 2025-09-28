@@ -43,13 +43,18 @@ public @interface AutoLog {
 
     int slowCallSeconds() default 1;
 
+    enum Enabled {
+        YES, NO, AUTO,
+        ;
+    }
+
     /**
      * Annotation to mark a method parameter to be ignored during logging when using the {@link AutoLog} annotation.
      * This indicates that the specific parameter should not be included in the logged arguments.
-     *
+     * <p>
      * Can be applied to method parameters where logging of argument details is enabled but specific parameters
      * should be excluded from being logged.
-     *
+     * <p>
      * Constraints:
      * - Applicable only to parameters of methods annotated with {@link AutoLog}.
      * - Ignored parameters will be excluded only from logging configurations that support argument logging.
@@ -60,15 +65,11 @@ public @interface AutoLog {
     @interface Ignored {
     }
 
-    enum Enabled {
-        YES, NO, AUTO,;
-    }
-
     /**
      * Configuration class for managing properties related to the AutoLog feature.
      * This configuration determines the behavior of automatic logging for methods,
      * including settings for logging entry, exit, exceptions, execution time, method arguments, and results.
-     *
+     * <p>
      * Fields:
      * - `enabled`: Enables or disables the AutoLog feature globally. Default is `false`.
      * - `entering`: If enabled, logs the entry of a method. Default is `true`.
@@ -78,7 +79,7 @@ public @interface AutoLog {
      * - `printArgs`: If enabled, logs the arguments passed to the method. Default is `false`.
      * - `printResult`: If enabled, logs the result returned by the method. Default is `false`.
      * - `warnSlowCalls`: If enabled, generates warnings for slow method executions based on the defined time threshold. Default is `true`.
-     *
+     * <p>
      * Constraints:
      * - This configuration is applied when the `AutoLog` feature is enabled in the application.
      * - Properties are mapped under the prefix "toolkit.autolog" in the application's configuration.

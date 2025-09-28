@@ -13,7 +13,8 @@ public class PropagateMdcToSubTasksTaskDecorator implements TaskDecorator {
      * @param runnable the original {@link Runnable} to be decorated. Must not be null.
      * @return a new {@link Runnable} that propagates the MDC context during execution.
      */
-    @Override @NonNull
+    @Override
+    @NonNull
     public Runnable decorate(@NonNull Runnable runnable) {
         var contextMap = MDC.getCopyOfContextMap();
 

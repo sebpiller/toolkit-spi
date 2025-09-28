@@ -1,4 +1,3 @@
-
 # Goodies
 
 ## Find outdated dependencies
